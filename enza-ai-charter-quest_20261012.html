@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enza AI Charter Quest, la Charte IA en jeu</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #322773;
+    --ink-soft: #5B528F;
+    --paper: #FCFBFF;
+    --paper-hover: #F0EEFA;
+    --action: #E63D50;
+    --action-hover: #CC3043;
+    --bubble: #049CAE;
+    --status: #03707D;
+    --bg: #EFEEF8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 14px 16px;
+  }
+  .game { width: 100%; max-width: min(960px, calc((100vh - 150px) * 1.1667)); }
+  .hud { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 22px; padding: 0 2px 10px; }
+  .hud h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .stats { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; font-variant-numeric: tabular-nums; }
+  .stats b { font-weight: 800; }
+  .stage { position: relative; border-radius: 6px; overflow: hidden; outline: none; }
+  canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+  .overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(50, 39, 115, 0.62); padding: 16px; z-index: 5;
+  }
+  .card {
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 4px;
+    box-shadow: 6px 6px 0 var(--ink); width: 100%; max-width: 590px;
+    padding: 24px 26px; max-height: 100%; overflow: auto;
+  }
+  .card h2 { margin: 0 0 2px; font-size: 32px; line-height: 1.1; font-weight: 850; letter-spacing: -0.02em; }
+  .card .sub { margin: 0 0 16px; color: var(--ink-soft); }
+  .card p { margin: 0 0 10px; max-width: 64ch; }
+  .controls { font-size: 14px; color: var(--ink-soft); }
+  .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .results div { border: 2px solid var(--ink); border-radius: 4px; padding: 8px 10px; }
+  .results span { display: block; font-size: 13px; color: var(--ink-soft); }
+  .results strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .egg { background: #DFFABE; color: var(--ink); font-size: 19px; font-weight: 400; font-style: italic; padding: 8px 16px; border: 2px solid var(--ink); border-radius: 4px; pointer-events: none; text-align: center; }
+  .prompt.bottom { top: auto; bottom: 10px; }
+  .prompt { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: max-content; max-width: 92%; z-index: 3; box-shadow: 3px 3px 0 var(--ink); }
+  .dialog {
+    position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 4;
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 4px;
+    box-shadow: 4px 4px 0 var(--ink); padding: 16px 18px; max-height: calc(100% - 24px); overflow: auto;
+  }
+  .who { margin: 0 0 4px; font-weight: 800; }
+  .line { margin: 0 0 12px; font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-size: 17px; line-height: 1.6; max-width: 70ch; }
+  .choices { display: grid; gap: 8px; }
+  .choices button { text-align: left; display: flex; align-items: baseline; gap: 10px; }
+  .key { flex: none; min-width: 1.7em; text-align: center; font-size: 13px; border: 1.5px solid var(--ink-soft); border-radius: 3px; padding: 0 4px; }
+  .ok { color: var(--status); font-weight: 800; }
+  .ko { color: var(--action); font-weight: 800; font-size: 19px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  button, .btn {
+    font: inherit; font-weight: 650; color: var(--ink); background: var(--paper);
+    border: 2px solid var(--ink); border-radius: 4px; padding: 9px 14px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  button:hover, .btn:hover { background: var(--paper-hover); }
+  .primary, .btn.primary { background: var(--action); color: #fff; font-size: 19px; font-weight: 700; padding: 8px 16px; }
+  .primary:hover, .btn.primary:hover { background: var(--action-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .snd { padding: 4px 10px; font-size: 14px; }
+  .snd[aria-pressed="true"] { background: var(--status); color: #fff; }
+  :focus-visible { outline: 3px solid var(--bubble); outline-offset: 2px; }
+  .stage:focus-visible, .dialog:focus { outline: none; }
+  label { display: block; font-size: 14px; margin-bottom: 8px; }
+  input { font: inherit; color: var(--ink); display: block; width: 100%; margin-top: 2px; padding: 7px 9px; border: 2px solid var(--ink); border-radius: 4px; }
+  .pad { display: none; margin: 12px auto 0; width: 210px; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pad button { padding: 14px 0; font-size: 18px; touch-action: none; user-select: none; }
+  .foot { max-width: 960px; width: 100%; margin: 12px 0 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
+  [hidden] { display: none !important; }
+  @media (pointer: coarse) { .pad { display: grid; } }
+  @media (max-width: 700px) {
+    .overlay { position: fixed; }
+    .dialog { position: static; margin: 0; border-width: 3px 0 0; box-shadow: none; border-radius: 0; max-height: none; }
+    .results { grid-template-columns: 1fr; }
+    .card h2 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <header class="hud">
+    <h1>Enza AI Charter Quest</h1>
+    <div class="stats">
+      <span>Collègues <b id="hud-done">0 / 8</b></span>
+      <span>Score <b id="hud-score">0</b></span>
+      <span>Chrono <b id="hud-time">00:00</b></span>
+      <button class="snd" id="snd" aria-pressed="false">Son coupé</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage" tabindex="-1">
+    <canvas id="cv" width="672" height="576" aria-label="Plan des bureaux, vue de dessus"></canvas>
+    <button class="prompt primary" id="prompt" hidden></button>
+    <div class="prompt egg" id="egg" role="status" hidden></div>
+    <div class="dialog" id="dialog" role="dialog" aria-live="polite" tabindex="-1" hidden></div>
+    <div class="overlay" id="overlay"></div>
+  </div>
+
+  <div class="pad" aria-label="Commandes tactiles">
+    <span></span><button data-dir="up" aria-label="Haut">▲</button><span></span>
+    <button data-dir="left" aria-label="Gauche">◀</button>
+    <button id="pad-talk" aria-label="Parler">●</button>
+    <button data-dir="right" aria-label="Droite">▶</button>
+    <span></span><button data-dir="down" aria-label="Bas">▼</button><span></span>
+  </div>
+</div>
+<p class="foot">Un seul fichier, sans serveur ni cookie : le jeu ne collecte aucune donnée, seul le formulaire final enregistre ton score.<br>La musique est générée par le code, sans fichier audio, et l'écran n'est redessiné que lorsque tu bouges.</p>
+
+<script>
+/* ============================================================
+   CONFIGURATION : les trois seules lignes à modifier
+   ============================================================ */
+const CONFIG = {
+  // Lien du Microsoft Forms, sans les réponses préremplies (laisser vide pour tester)
+  FORMS_URL: "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=Hl4lJgGEukWRpKDi3cyMmk5ltiMQPoxAuiXey9pVGA5UMVMzSEI2MzVaTUY1N01NVVdWSDAyUEE5Sy4u",
+  // Identifiants des trois questions du Forms (à mettre à jour si le formulaire est recréé)
+  FORMS_FIELDS: {
+    score: "rc2f5b4b851d0436d9e268ba195f18eeb",
+    temps: "re09b821c95794dd1a03018066c3396cb",
+    code:  "r25bd209823c24743ae853a18109c3982"
+  },
+  // Version de référence de la charte
+  CHARTE_URL: "https://enzafr.sharepoint.com/sites/KnowledgeManagement/SitePages/F00---Charte-IA-chez-Enza.aspx",
+  // Changer cette valeur avant diffusion (sert au code de vérification)
+  SALT: "enza-nr-2026"
+};
+
+/* ============================================================
+   CARTE : copiée du fichier Excel (une lettre = une case)
+   # mur  L/A sol lavande/aqua  O passage  B bureau  T table  Z bar
+   K machine à café  F frigo  N bonbons  V canapé  H phone box  C cheminée
+   W toilettes  E cuisine  P plante  Q étagère  G ventilateur  X palier  Y escalier
+   x extérieur  1-8 PNJ  J départ du joueur
+   ============================================================ */
+const RAW = [
+  "#####################",
+  "#WAA#FAAAK1N#PLLLLLL#",
+  "###O#AAZZZAA#LLLL7LL#",
+  "#ELLOAAAAAAV#LLTTTTL#",
+  "#E6L#AAAAAAV#LLTTTTL#",
+  "#####TTATTAA#LLTTTTL#",
+  "xxxx#A5AAAAAOLLLLLLL#",
+  "xxxx#######O#########",
+  "xxxx#HLLCHHL#HPAA3AA#",
+  "xxxx#LLLLLLL#AAABBBA#",
+  "xxxx#LLBBLLL#AAABBBA#",
+  "xxxx#GLBBLLLOAAAAAAA#",
+  "xxxx#LLBB2LL#########",
+  "xxxx#PLLLLLH#LLLLLLP#",
+  "xxxx#LLLLLLH#LLLLBLL#",
+  "xxxx#LL4QQLLOLBBBB8L#",
+  "xxxx#O###############",
+  "xxxxxJXYYxxxxxxxxxxxx"
+];
+
+/* ============================================================
+   CONTENU : les 8 collègues (leur position vient de la carte)
+   answer = index de la bonne réponse (l'ordre affiché est tiré au hasard)
+   ============================================================ */
+const NPCS = [
+  { id: "cafe", name: "L'habitué de la machine à café", to: "à l'habitué de la machine à café",
+    pal: { H: "#3B2A20", S: "#E8C3A0", T: "#3F5A8A", L: "#2E3440", K: "#1E2A3A" },
+    intro: "Deuxième café de la matinée. Moi je carbure à la caféine, l'IA carbure à l'électricité. Et pas qu'un peu.",
+    question: "Selon la charte, une requête IA consomme jusqu'à combien de fois plus d'énergie qu'une recherche web ?",
+    choices: ["Jusqu'à 3 fois plus", "Jusqu'à 10 fois plus", "Jusqu'à 30 fois plus"], answer: 1,
+    hint: "Relis la partie « Sobriété d'usage » de la charte.",
+    expl: "Jusqu'à 10 fois plus. D'où les règles de sobriété : privilégier la recherche web quand elle suffit, formuler un prompt clair et limiter les demandes multiples." },
+
+  { id: "stagiaire", name: "Le stagiaire pressé", to: "au stagiaire pressé",
+    pal: { H: "#D9A441", S: "#F0CFB0", T: "#6FA3C8", L: "#3A4A5E", K: "#1E2A3A" },
+    intro: "Mon manager m'a demandé l'adresse du client pour la réunion de demain.",
+    question: "J'ouvre l'IA pour la trouver ?",
+    choices: ["Oui, si l'outil est autorisé", "Non, une recherche dans le navigateur suffit", "Oui, avec un prompt court et précis"], answer: 1,
+    hint: "Relis la partie « Sobriété d'usage » de la charte.",
+    expl: "Pour une information simple, le navigateur suffit et consomme bien moins. La charte demande de réserver l'IA à des usages ciblés." },
+
+  { id: "gadgets", name: "Le fan de gadgets", to: "au fan de gadgets",
+    pal: { H: "#1E1E24", S: "#C68E63", T: "#8E7CC3", L: "#2E3440", K: "#1E2A3A" },
+    intro: "Regarde ce que j'ai déniché : une IA gratuite, ultra puissante, hébergée… quelque part.",
+    question: "Je peux l'utiliser pour mes missions ?",
+    choices: ["Oui, si elle est hébergée en UE", "Seulement si elle fait partie des outils autorisés", "Oui, si je n'y mets aucune donnée client"], answer: 1,
+    hint: "Relis la partie « Protection des données » de la charte.",
+    expl: "Uniquement des outils autorisés, de préférence hébergés en UE. Le reste, c'est du « Shadow AI », précisément ce que la charte veut éviter." },
+
+  { id: "accueil", name: "L'office manager", to: "à l'office manager",
+    pal: { H: "#2A1C14", S: "#EFC9A8", T: "#4F7A4A", L: "#2E3440", K: "#1E2A3A" },
+    intro: "Bonjour ! Petit contrôle avant ton départ en mission.",
+    question: "Tu te connectes à un outil IA dans le cadre de ta mission. Avec quelle adresse ?",
+    choices: ["Toujours ton adresse Enza", "Ton adresse Enza ou client, selon le contexte", "Toujours l'adresse fournie par le client"], answer: 1,
+    hint: "Relis la partie « Protection des données » de la charte.",
+    expl: "Toujours une adresse professionnelle : celle d'Enza ou celle du client, selon le contexte de la mission. Jamais d'adresse personnelle." },
+
+  { id: "cdp", name: "La cheffe de projet débordée", to: "à la cheffe de projet",
+    pal: { H: "#A33A2A", S: "#F2D2B6", T: "#B5892F", L: "#2E3440", K: "#1E2A3A" },
+    intro: "Quarante pages de compte rendu, dix minutes avant le comité. Je colle tout dans notre outil IA, avec les noms des équipes du client.",
+    question: "Qu'est-ce que je dois faire avant ?",
+    choices: ["Anonymiser seulement si l'outil n'est pas autorisé", "Anonymiser systématiquement les données saisies", "Anonymiser seulement les données personnelles"], answer: 1,
+    hint: "Relis la partie « Protection des données » de la charte.",
+    expl: "L'anonymisation est systématique : même avec un outil autorisé, et pour toutes les données saisies, pas seulement les données personnelles." },
+
+  { id: "juriste", name: "La juriste", to: "à la juriste",
+    pal: { H: "#2B2B33", S: "#B98361", T: "#34343E", L: "#26262E", K: "#1E2A3A" },
+    intro: "Question piège… ou pas.",
+    question: "Copier un livrable client dans une IA publique, c'est :",
+    choices: ["Un simple écart aux bonnes pratiques", "Potentiellement une faute contractuelle grave", "Un risque uniquement au regard du RGPD"], answer: 1,
+    hint: "Relis la partie « Nos obligations réglementaires », côté contrats clients.",
+    expl: "Les contrats clients comportent des exigences de confidentialité. Copier un livrable ou des données client dans une IA publique peut constituer une faute contractuelle grave." },
+
+  { id: "associee", name: "L'associée", to: "à l'associée",
+    pal: { H: "#8A8A92", S: "#E6C09A", T: "#5C4A72", L: "#2B2B33", K: "#1E2A3A" },
+    intro: "Le client a trouvé une erreur dans le livrable. Il avait été généré avec l'IA.",
+    question: "Qui en porte la responsabilité ?",
+    choices: ["Le consultant et l'éditeur de l'IA, à parts égales", "Le consultant, entièrement", "Le manager qui a validé l'usage de l'IA"], answer: 1,
+    hint: "Relis « Notre responsabilité » dans le manifeste.",
+    expl: "Chaque consultant reste responsable de la qualité, de la fiabilité et de la pertinence de ses livrables. L'IA ne transfère pas cette responsabilité : l'IA propose, le consultant décide." },
+
+  { id: "boss", name: "La Grande Argentière", to: "à la Grande Argentière", boss: true,
+    pal: { H: "#1B1B22", S: "#F1D3BC", T: "#322773", L: "#322773", K: "#1B1540" },
+    intro: "Te voilà enfin. Ici, on vérifie les chiffres avant de les signer. Dernière épreuve : l'IA te donne un chiffre de marché parfait pour ta recommandation.",
+    question: "Tu fais quoi ?",
+    choices: ["Tu demandes à une deuxième IA de le confirmer", "Tu vérifies la source et sa date, puis tu reformules", "Tu le gardes en citant l'IA comme source"], answer: 1,
+    hint: "Relis la partie « Esprit critique obligatoire » de la charte.",
+    expl: "Les connaissances des IA ne sont pas toujours à jour. On vérifie la pertinence et l'actualité des sources, l'absence de biais, et on reformule systématiquement." }
+];
+const POINTS = [100, 50, 20];
+
+/* ============================================================
+   LECTURE DE LA CARTE
+   ============================================================ */
+const T = 32, PX = 2;
+const ROWS = RAW.length, COLS = RAW[0].length;
+const MAP = RAW.map(r => r.split(""));
+let START = { x: 1, y: 1 };
+function floorAround(x, y) {
+  const n = { L: 0, A: 0 };
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const c = (RAW[y + dy] || "")[x + dx]; if (c in n) n[c]++; });
+  return n.A > n.L ? "A" : "L";
+}
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  const c = RAW[y][x];
+  if (/[1-8]/.test(c)) { const n = NPCS[+c - 1]; n.x = x; n.y = y; MAP[y][x] = floorAround(x, y); }
+  else if (c === "J") { START = { x, y }; MAP[y][x] = "X"; }
+}
+const WALK = new Set(["L", "A", "O", "X"]);
+/* Bureaux sans écran (colonne,ligne en partant de 0) : bureau DAF, seuls P16 et R16 gardent un écran */
+const NO_SCREEN = new Set(["14,15", "16,15", "17,14"]);
+/* Easter eggs (colonne,ligne en partant de 0) : C2, I2, G2, I10, L3 et G12 dans Excel */
+const EGGS = {
+  "2,1": "Une envie pressante ?",
+  "8,1": "Un petit café ?",
+  "6,1": "T'as pensé à jeter ton yaourt périmé ?",
+  "8,9": "Au poêle ! 🔥",
+  "11,2": "Team bonbons ou team graines ?",
+  "6,11": "Sous le veeent... 🎶"
+};
+
+const C = {
+  ink: "#322773", wall: "#322773", wallFace: "#9F95DB", wallLine: "#B7AFE5", window: "#BEE6EB",
+  outside: "#EFEEF8", wood: "#B98A5E", woodDark: "#8A6340", woodLight: "#C9A075", counterTop: "#D8B48A",
+  leaf: "#4F7A4A", leafLight: "#6E9A5F", pot: "#9A6B4B", screen: "#2A2455", standby: "#7BD389",
+  machine: "#8E97A2", machineDark: "#3A4452", led: "#E63D50", white: "#FFFFFF",
+  bubble: "#049CAE", alert: "#E63D50", doneBubble: "#BEE6EB", lockBubble: "#CFCAED"
+};
+const FLOORS = {
+  L: ["#CFCAED", "#C6C0E8"], A: ["#BEE6EB", "#B3E0E6"],
+  O: ["#E6E3F4", "#DDD9F0"], X: ["#E5E5E5", "#DCDCDC"]
+};
+const BOOKS = ["#E63D50", "#322773", "#049CAE", "#B5892F", "#4F7A4A", "#E6E3F4"];
+
+const BODY = [
+  "....HHHH....", "...HHHHHH...", "..HHHHHHHH..", "..HSSSSSSH..",
+  "...SSSSSS...", "...SSSSSS...", "....SSSS....", "...TTTTTT...",
+  "..TTTTTTTT..", ".STTTTTTTTS.", ".STTTTTTTTS.", "...TTTTTT...",
+  "...LLLLLL...", "...LL..LL...", "...LL..LL...", "...KK..KK..."
+];
+const LEGS_STEP = ["..LL....LL..", "..LL....LL..", "..KK....KK.."];
+const EYES = { down: [4, 7], left: [3, 6], right: [5, 8], up: [] };
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const PLAYER_PAL = { H: "#4A3222", S: "#EBC7A5", T: "#E63D50", L: "#322773", K: "#1B1540" };
+
+/* ============================================================
+   ÉTAT
+   ============================================================ */
+const cv = document.getElementById("cv");
+cv.width = COLS * T; cv.height = ROWS * T;
+const ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+let phase = "intro";
+let player, done, attempts, score, currentNpc, currentOrder, openedAt = 0;
+let compassTarget = null, compassDist = 0;
+const dirStack = [];
+const timer = { acc: 0, since: null, running: false, iv: null };
+
+function resetState() {
+  player = { x: START.x, y: START.y, fx: START.x, fy: START.y, dir: "up", moving: false, t0: 0, frame: 0 };
+  done = new Set(); attempts = {}; score = 0; currentNpc = null; compassTarget = null;
+  /* Ordre des réponses tiré une seule fois par partie : stable à chaque nouvelle tentative, différent à chaque partie */
+  NPCS.forEach(n => { n.dir = "down"; attempts[n.id] = 0; n.order = shuffle([0, 1, 2]); });
+  timer.acc = 0; timer.since = null; timer.running = false;
+  updateHud();
+}
+const bossUnlocked = () => done && done.size >= NPCS.length - 1;
+
+/* ============================================================
+   CHRONO (en pause quand l'onglet est masqué, par ex. pour lire la charte)
+   ============================================================ */
+function tResume() { if (timer.running && timer.since === null && !document.hidden) timer.since = performance.now(); }
+function tPause() { if (timer.since !== null) { timer.acc += performance.now() - timer.since; timer.since = null; } }
+function tElapsed() { return timer.acc + (timer.since !== null ? performance.now() - timer.since : 0); }
+function fmt(sec) { const m = Math.floor(sec / 60), s = sec % 60; return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); }
+document.addEventListener("visibilitychange", () => { document.hidden ? tPause() : tResume(); updateHud(); Sound.visibility(); });
+function updateHud() {
+  $("hud-done").textContent = (done ? done.size : 0) + " / 8";
+  $("hud-score").textContent = score || 0;
+  $("hud-time").textContent = fmt(Math.floor(tElapsed() / 1000));
+}
+
+/* ============================================================
+   SON : musique 8-bit générée en direct (Web Audio), aucun fichier
+   ============================================================ */
+const Sound = (() => {
+  let ac = null, master = null, leadBus = null, arpBus = null, noise = null;
+  let on = false, want = null, track = null, idx = 0, loops = 0, t0 = 0, iv = null;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  /* Thème original « Enza AI Charter Quest », mi mineur, 150 BPM, grille en doubles croches (16 par mesure).
+     Notes MIDI : B4=71 C5=72 D5=74 D#5=75 E5=76 F#5=78 G5=79 A5=81 B5=83 C6=84 D6=86 */
+  const CH = {
+    Em: { r: 40, a: [64, 67, 71, 67] }, C: { r: 36, a: [60, 64, 67, 64] },
+    D:  { r: 38, a: [62, 66, 69, 66] }, B: { r: 35, a: [59, 63, 66, 63] },
+    Am: { r: 45, a: [57, 60, 64, 60] }, G: { r: 43, a: [55, 59, 62, 59] }
+  };
+  const PART_A = [
+    { ch: [["Em", 16]], lead: [[71, 4], [76, 4], [79, 2], [78, 2], [76, 2], [79, 2]] },
+    { ch: [["C", 16]],  lead: [[81, 6], [79, 2], [76, 4], [72, 4]] },
+    { ch: [["D", 16]],  lead: [[74, 2], [78, 2], [81, 4], [79, 2], [78, 2], [74, 4]] },
+    { ch: [["B", 16]],  lead: [[75, 6], [78, 2], [83, 8]] },
+    { ch: [["Em", 16]], lead: [[76, 2], [76, 2], [83, 4], [81, 2], [79, 2], [78, 2], [79, 2]] },
+    { ch: [["C", 16]],  lead: [[76, 4], [84, 4], [83, 2], [81, 2], [79, 4]] },
+    { ch: [["Am", 8], ["D", 8]], lead: [[81, 4], [76, 4], [78, 4], [81, 4]] },
+    { ch: [["B", 16]],  lead: [[83, 6], [81, 2], [78, 4], [75, 4]] }
+  ];
+  const PART_B = [
+    { ch: [["C", 16]],  lead: [[79, 4], [76, 2], [79, 2], [84, 4], [83, 4]] },
+    { ch: [["D", 16]],  lead: [[81, 4], [78, 2], [81, 2], [86, 6], [84, 2]] },
+    { ch: [["Em", 16]], lead: [[83, 4], [79, 4], [76, 4], [71, 4]] },
+    { ch: [["Em", 16]], lead: [[76, 2], [78, 2], [79, 2], [81, 2], [83, 8]] },
+    { ch: [["Am", 16]], lead: [[84, 4], [83, 2], [81, 2], [76, 4], [81, 4]] },
+    { ch: [["D", 16]],  lead: [[78, 4], [81, 4], [86, 4], [84, 2], [81, 2]] },
+    { ch: [["G", 8], ["B", 8]], lead: [[83, 4], [79, 4], [78, 4], [75, 4]] },
+    { ch: [["B", 16]],  lead: [[71, 4], [75, 4], [78, 4], [83, 4]] }
+  ];
+  function build(bars, opt) {
+    const ev = []; let t = 0;
+    bars.forEach(b => {
+      let tl = t; b.lead.forEach(([n, l]) => { if (n) ev.push({ t: tl, d: l, n, v: "lead" }); tl += l; });
+      if (b.bass) { let tb = t; b.bass.forEach(([n, l]) => { ev.push({ t: tb, d: l, n, v: "bass" }); tb += l; }); }
+      if (b.ch) {
+        let tc = t;
+        b.ch.forEach(([name, l]) => {
+          const c = CH[name];
+          for (let i = 0; i < l; i++) {
+            if (i % 2 === 0) ev.push({ t: tc + i, d: 2, n: i % 4 === 0 ? c.r : c.r + 12, v: "bass" });
+            if (opt.arp) ev.push({ t: tc + i, d: 1, n: c.a[i % 4], v: "arp" });
+          }
+          tc += l;
+        });
+      }
+      if (opt.drums) for (let i = 0; i < 16; i++) {
+        if (i === 0 || i === 8 || i === 10) ev.push({ t: t + i, d: 1, v: "kick" });
+        if (i === 4 || i === 12) ev.push({ t: t + i, d: 1, v: "snare" });
+        if (i % 2 === 0) ev.push({ t: t + i, d: 1, v: "hat" });
+      }
+      t += 16;
+    });
+    ev.sort((a, b) => a.t - b.t);
+    return { ev, len: t, step: 60 / opt.bpm / 4, loop: opt.loop, lead: opt.lead, arp: opt.arp || 0, drums: opt.drums };
+  }
+  const TRACKS = {
+    intro: build(PART_A, { bpm: 150, loop: true, lead: 0.26, arp: 0.09, drums: "always" }),
+    game: build(PART_A.concat(PART_B), { bpm: 150, loop: true, lead: 0.2, arp: 0.07, drums: "boss" }),
+    victory: build([
+      { lead: [[74, 2], [77, 2], [81, 2], [86, 6], [82, 2], [84, 2]], bass: [[50, 6], [46, 6], [48, 4]] },
+      { lead: [[86, 16]], bass: [[50, 16]] }
+    ], { bpm: 132, loop: false, lead: 0.34, drums: false })
+  };
+  function init() {
+    if (ac) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ac = new AC();
+    master = ac.createGain(); master.gain.value = 0.14; master.connect(ac.destination);
+    leadBus = ac.createBiquadFilter(); leadBus.type = "lowpass"; leadBus.frequency.value = 3000; leadBus.connect(master);
+    arpBus = ac.createBiquadFilter(); arpBus.type = "lowpass"; arpBus.frequency.value = 1600; arpBus.connect(master);
+    noise = ac.createBuffer(1, ac.sampleRate * 0.2, ac.sampleRate);
+    const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return true;
+  }
+  function tone(n, t, dur, type, vol, dest) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = mtof(n);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.008);
+    g.gain.linearRampToValueAtTime(vol * 0.6, t + Math.min(0.1, dur * 0.5));
+    g.gain.linearRampToValueAtTime(0, t + dur * 0.9);
+    o.connect(g); g.connect(dest || master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function kick(t) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
+    g.gain.setValueAtTime(0.55, t); g.gain.linearRampToValueAtTime(0, t + 0.12);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.14);
+  }
+  function noiseHit(t, type, freq, vol, len) {
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = noise; f.type = type; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.linearRampToValueAtTime(0, t + len);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + len + 0.01);
+  }
+  function play(e, t, tr) {
+    const dur = e.d * tr.step;
+    if (e.v === "lead") tone(e.n, t, dur, "square", tr.lead, leadBus);
+    else if (e.v === "arp") tone(e.n, t, dur, "square", tr.arp, arpBus);
+    else if (e.v === "bass") tone(e.n, t, dur, "triangle", 0.38);
+    else {
+      if (tr.drums === "boss" && !bossUnlocked()) return;
+      if (e.v === "kick") kick(t);
+      else if (e.v === "snare") noiseHit(t, "bandpass", 1800, 0.3, 0.12);
+      else noiseHit(t, "highpass", 7000, 0.09, 0.035);
+    }
+  }
+  function sched() {
+    if (!track || !ac) return;
+    const tr = TRACKS[track], ahead = ac.currentTime + 0.35;
+    for (;;) {
+      const e = tr.ev[idx];
+      const at = t0 + (loops * tr.len + e.t) * tr.step;
+      if (at > ahead) break;
+      play(e, at, tr);
+      if (++idx >= tr.ev.length) {
+        idx = 0; loops++;
+        if (!tr.loop) { track = null; stopTimer(); return; }
+      }
+    }
+  }
+  function stopTimer() { if (iv) { clearInterval(iv); iv = null; } }
+  function start(name) {
+    track = name; idx = 0; loops = 0; t0 = ac.currentTime + 0.08;
+    stopTimer(); sched(); iv = setInterval(sched, 100);
+  }
+  return {
+    get on() { return on; },
+    music(name) { want = name; if (on) { if (name) start(name); else { track = null; stopTimer(); } } },
+    victory() { want = null; if (on) start("victory"); },
+    sfx(kind) {
+      if (!on) return;
+      const t = ac.currentTime + 0.02;
+      if (kind === "ok") [74, 77, 81, 86].forEach((n, i) => tone(n, t + i * 0.08, 0.14, "square", 0.3, leadBus));
+      else { tone(69, t, 0.16, "triangle", 0.5); tone(65, t + 0.17, 0.3, "triangle", 0.45); }
+    },
+    toggle() {
+      if (!on) {
+        if (!init()) return false;
+        on = true; ac.resume();
+        if (want) start(want);
+      } else {
+        on = false; track = null; stopTimer(); ac.suspend();
+      }
+      return on;
+    },
+    visibility() {
+      if (!ac || !on) return;
+      if (document.hidden) ac.suspend(); else ac.resume();
+    }
+  };
+})();
+
+function toggleSound() {
+  Sound.toggle();
+  const b = $("snd");
+  b.setAttribute("aria-pressed", Sound.on ? "true" : "false");
+  b.textContent = Sound.on ? "Son activé" : "Son coupé";
+}
+
+/* ============================================================
+   DESSIN
+   ============================================================ */
+function at(x, y) { return MAP[y] && MAP[y][x]; }
+function rect(c, x, y, w, h) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+function floorCode(x, y) {
+  const c = at(x, y);
+  if (FLOORS[c]) return c;
+  let best = "L";
+  for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0]]) { const n = at(x + dx, y + dy); if (n === "A" || n === "L") { best = n; break; } }
+  return best;
+}
+function drawFloor(x, y) { const f = FLOORS[floorCode(x, y)]; rect((x + y) % 2 ? f[1] : f[0], x * T, y * T, T, T); }
+function joined(x, y, ch) {
+  return { l: at(x - 1, y) === ch, r: at(x + 1, y) === ch, t: at(x, y - 1) === ch, b: at(x, y + 1) === ch };
+}
+
+function drawTile(x, y) {
+  const ch = at(x, y), X = x * T, Y = y * T;
+  if (ch === "x") { rect(C.outside, X, Y, T, T); return; }
+  if (ch === "#") {
+    rect(C.wall, X, Y, T, T);
+    const below = at(x, y + 1);
+    if (y + 1 < ROWS && below !== "#" && below !== "x") {
+      rect(C.wallFace, X, Y + T - 10, T, 10);
+      rect(C.wallLine, X, Y + T - 10, T, 2);
+      if (y === 0 && x % 4 === 2) rect(C.window, X + 5, Y + T - 7, 22, 5);
+    }
+    return;
+  }
+  drawFloor(x, y);
+  const j = joined(x, y, ch);
+  switch (ch) {
+    case "B":
+      rect(C.woodDark, X + 2, Y + 12, 28, 16);
+      rect(C.wood, X + 2, Y + 10, 28, 15);
+      if (NO_SCREEN.has(x + "," + y)) break;
+      rect(C.ink, X + 9, Y + 1, 14, 11);
+      rect(C.screen, X + 10, Y + 2, 12, 8);
+      rect(C.standby, X + 19, Y + 10, 2, 1);
+      rect(C.ink, X + 15, Y + 12, 2, 2);
+      break;
+    case "T": {
+      const l = j.l ? 0 : 3, r = j.r ? 0 : 3, t = j.t ? 0 : 3, b = j.b ? 0 : 4;
+      rect(C.woodDark, X + l, Y + t, T - l - r, T - t - b);
+      rect(C.woodLight, X + l, Y + t, T - l - r, T - t - b - (b ? 3 : 0));
+      break;
+    }
+    case "Z": {
+      const l = j.l ? 0 : 2, r = j.r ? 0 : 2;
+      rect(C.woodDark, X + l, Y + 8, T - l - r, 22);
+      rect(C.wood, X + l, Y + 8, T - l - r, 18);
+      rect(C.counterTop, X + l, Y + 8, T - l - r, 5);
+      break;
+    }
+    case "Q":
+      rect(C.woodDark, X + (j.l ? 0 : 1), Y + 1, T - (j.l ? 0 : 1) - (j.r ? 0 : 1), 30);
+      for (let s = 0; s < 3; s++) {
+        const y0 = Y + 3 + s * 9;
+        rect("#6B4C31", X + 3, y0, 26, 8);
+        for (let i = 0; i < 6; i++) {
+          const h = 6 + ((x * 7 + y * 3 + s * 5 + i) % 2);
+          rect(BOOKS[(x + y * 2 + s + i) % BOOKS.length], X + 4 + i * 4, y0 + 8 - h, 3, h);
+        }
+      }
+      break;
+    case "K":
+      rect(C.machine, X + 5, Y + 3, 22, 26);
+      rect(C.machineDark, X + 8, Y + 6, 16, 8);
+      rect(C.led, X + 22, Y + 17, 2, 2);
+      rect(C.white, X + 12, Y + 20, 8, 6);
+      rect(C.ink, X + 5, Y + 27, 22, 2);
+      break;
+    case "F":
+      rect(C.ink, X + 5, Y + 1, 22, 29);
+      rect(C.white, X + 6, Y + 2, 20, 27);
+      rect(C.ink, X + 6, Y + 11, 20, 1);
+      rect("#8E97A2", X + 22, Y + 5, 2, 4);
+      rect("#8E97A2", X + 22, Y + 14, 2, 7);
+      break;
+    case "N":
+      rect(C.ink, X + 8, Y + 8, 16, 18);
+      rect("#EAF6F8", X + 9, Y + 9, 14, 16);
+      rect(C.ink, X + 10, Y + 6, 12, 3);
+      [["#E63D50", 11, 14], ["#049CAE", 16, 12], ["#F2C14E", 13, 19], ["#E63D50", 18, 20], ["#322773", 17, 16]]
+        .forEach(([c, dx, dy]) => rect(c, X + dx, Y + dy, 3, 3));
+      break;
+    case "V": {
+      const t = j.t ? 0 : 3, b = j.b ? 0 : 3;
+      rect("#6F7883", X + 18, Y + t, 11, T - t - b);
+      rect("#8E97A2", X + 4, Y + t, 16, T - t - b);
+      if (!j.t) rect("#6F7883", X + 4, Y + t, 25, 4);
+      if (!j.b) rect("#6F7883", X + 4, Y + T - b - 4, 25, 4);
+      break;
+    }
+    case "H": {
+      const l = j.l ? 0 : 2, r = j.r ? 0 : 2, t = j.t ? 0 : 2, b = j.b ? 0 : 2;
+      rect("#4A4F5B", X + l, Y + t, T - l - r, T - t - b);
+      rect("#A9B8C6", X + l + (j.l ? 0 : 3), Y + t + (j.t ? 0 : 3), T - l - r - (j.l ? 0 : 3) - (j.r ? 0 : 3), T - t - b - (j.t ? 0 : 3) - (j.b ? 0 : 3));
+      rect("#C9D5DF", X + l + 5, Y + t + 5, 3, 10);
+      break;
+    }
+    case "C":
+      rect("#7E5539", X + 2, Y + 2, 28, 28);
+      rect("#6A4630", X + 2, Y + 2, 28, 5);
+      rect("#1B1540", X + 8, Y + 10, 16, 18);
+      break;
+    case "G": /* ventilateur sur pied, tourné vers la droite */
+      rect("#4A4F5B", X + 8, Y + 27, 14, 3);
+      rect("#8E97A2", X + 14, Y + 13, 3, 14);
+      rect(C.ink, X + 7, Y + 5, 10, 9);
+      rect("#8E97A2", X + 8, Y + 6, 8, 7);
+      ctx.fillStyle = C.ink; ctx.beginPath(); ctx.ellipse(X + 21, Y + 9, 4, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#C9D5DF"; ctx.beginPath(); ctx.ellipse(X + 21, Y + 9, 3, 7, 0, 0, Math.PI * 2); ctx.fill();
+      rect(C.ink, X + 20, Y + 3, 2, 12);
+      rect(C.white, X + 27, Y + 4, 4, 1);
+      rect(C.white, X + 28, Y + 9, 4, 1);
+      rect(C.white, X + 27, Y + 14, 4, 1);
+      break;
+    case "W": /* toilettes, réservoir contre le mur de gauche */
+      rect(C.ink, X, Y + T - 2, T, 2);
+      rect(C.white, X + 3, Y + 10, 6, 12);
+      rect(C.ink, X + 9, Y + 10, 1, 12);
+      ctx.fillStyle = C.ink; ctx.beginPath(); ctx.ellipse(X + 18, Y + 16, 8, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = C.white; ctx.beginPath(); ctx.ellipse(X + 18, Y + 16, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+      break;
+    case "E":
+      rect("#6F7883", X + 1, Y, 22, T);
+      rect("#8E97A2", X + 1, Y, 20, T);
+      if (y % 2) { rect("#C7CCD3", X + 4, Y + 7, 14, 16); rect("#8E97A2", X + 10, Y + 4, 2, 5); }
+      else { rect("#3A4452", X + 5, Y + 6, 7, 7); rect("#3A4452", X + 5, Y + 18, 7, 7); rect("#3A4452", X + 13, Y + 12, 6, 6); }
+      break;
+    case "P":
+      rect(C.pot, X + 10, Y + 20, 12, 10);
+      rect("#7E5539", X + 10, Y + 20, 12, 2);
+      ctx.fillStyle = C.leaf; ctx.beginPath(); ctx.arc(X + 16, Y + 13, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = C.leafLight; ctx.beginPath(); ctx.arc(X + 13, Y + 10, 4, 0, Math.PI * 2); ctx.fill();
+      break;
+    case "Y":
+      rect("#E5E5E5", X, Y, T, T);
+      for (let i = 0; i < 5; i++) rect("#9A9890", X, Y + 2 + i * 6, T, 3);
+      break;
+  }
+}
+
+function drawChar(px, py, pal, dir, step) {
+  ctx.fillStyle = "rgba(50,39,115,0.2)";
+  ctx.beginPath(); ctx.ellipse(px + 16, py + 30, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+  const ox = px + 4, oy = py;
+  for (let r = 0; r < 16; r++) {
+    const row = step && r >= 13 ? LEGS_STEP[r - 13] : BODY[r];
+    for (let c = 0; c < 12; c++) {
+      let k = row[c];
+      if (k === ".") continue;
+      if (dir === "up" && r >= 3 && r <= 5 && k === "S") k = "H";
+      ctx.fillStyle = pal[k];
+      ctx.fillRect(ox + c * PX, oy + r * PX, PX, PX);
+    }
+  }
+  ctx.fillStyle = "#1B1540";
+  EYES[dir].forEach(c => ctx.fillRect(ox + c * PX, oy + 4 * PX, PX, PX));
+}
+
+function drawBubble(cx, cy, bg, txt, fg) {
+  rect(C.ink, cx - 9, cy - 9, 18, 16);
+  rect(bg, cx - 8, cy - 8, 16, 14);
+  rect(C.ink, cx - 2, cy + 7, 4, 3);
+  ctx.fillStyle = fg || C.ink; ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(txt, cx, cy);
+}
+
+function drawCompass(px, py) {
+  const n = compassTarget;
+  const cx = px + 16, cy = py + 14;
+  const a = Math.atan2(n.y * T + 16 - cy, n.x * T + 16 - cx);
+  ctx.save();
+  ctx.translate(cx + Math.cos(a) * 24, cy + Math.sin(a) * 24);
+  ctx.rotate(a);
+  ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, -7); ctx.lineTo(-2, 0); ctx.lineTo(-5, 7); ctx.closePath();
+  ctx.fillStyle = C.white; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = C.ink; ctx.stroke();
+  ctx.restore();
+}
+
+function draw(now) {
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) drawTile(x, y);
+  const p = player.moving ? Math.min(1, (now - player.t0) / MOVE_MS) : 1;
+  const rx = player.fx + (player.x - player.fx) * p, ry = player.fy + (player.y - player.fy) * p;
+  const ppx = Math.round(rx * T), ppy = Math.round(ry * T);
+  const actors = NPCS.map(n => ({ y: n.y, draw: () => drawChar(n.x * T, n.y * T, n.pal, n.dir, 0) }));
+  actors.push({ y: ry, draw: () => drawChar(ppx, ppy, PLAYER_PAL, player.dir, player.moving && p < 0.6 ? player.frame : 0) });
+  actors.sort((a, b) => a.y - b.y).forEach(a => a.draw());
+  NPCS.forEach(n => {
+    const cx = n.x * T + 16, cy = n.y * T - 4;
+    if (done.has(n.id)) drawBubble(cx, cy, C.doneBubble, "✓");
+    else if (n.boss && !bossUnlocked()) drawBubble(cx, cy, C.lockBubble, "…");
+    else drawBubble(cx, cy, C.alert, "!", C.white);
+  });
+  if (phase === "play" && compassTarget && compassDist > 0) drawCompass(ppx, ppy);
+}
+
+/* ============================================================
+   DÉPLACEMENT (la boucle ne tourne que pendant un mouvement)
+   ============================================================ */
+const MOVE_MS = 140;
+let rafId = null;
+function requestTick() { if (!rafId) rafId = requestAnimationFrame(tick); }
+function occupied(x, y) { return NPCS.some(n => n.x === x && n.y === y); }
+function walkable(x, y) {
+  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
+  return WALK.has(at(x, y)) && !occupied(x, y);
+}
+function tryStartMove(now) {
+  const d = dirStack[dirStack.length - 1];
+  if (!d) return false;
+  player.dir = d;
+  const nx = player.x + DIRS[d][0], ny = player.y + DIRS[d][1];
+  if (!walkable(nx, ny)) { updatePrompt(); return false; }
+  player.fx = player.x; player.fy = player.y; player.x = nx; player.y = ny;
+  player.moving = true; player.t0 = now; player.frame ^= 1;
+  $("prompt").hidden = true;
+  $("egg").hidden = true;
+  return true;
+}
+function tick(now) {
+  rafId = null;
+  if (phase === "play") {
+    if (player.moving) {
+      if (now - player.t0 >= MOVE_MS) {
+        player.moving = false; computeCompass(); updateEgg();
+        if (!tryStartMove(now)) updatePrompt();
+      }
+    } else tryStartMove(now);
+  }
+  draw(now);
+  if (phase === "play" && (player.moving || dirStack.length)) requestTick();
+}
+function pressDir(d) { if (!dirStack.includes(d)) dirStack.push(d); requestTick(); }
+function releaseDir(d) { const i = dirStack.indexOf(d); if (i >= 0) dirStack.splice(i, 1); }
+
+/* Boussole : PNJ non visité le plus proche en distance de marche */
+function computeCompass() {
+  compassTarget = null;
+  const targets = NPCS.filter(n => !done.has(n.id) && (!n.boss || bossUnlocked()));
+  if (!targets.length) return;
+  const dist = new Int16Array(COLS * ROWS).fill(-1);
+  const q = [player.x + player.y * COLS]; dist[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % COLS, y = (i / COLS) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!walkable(nx, ny)) continue;
+      const k = nx + ny * COLS;
+      if (dist[k] < 0) { dist[k] = dist[i] + 1; q.push(k); }
+    }
+  }
+  let best = Infinity;
+  targets.forEach(n => {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = n.x + dx, ny = n.y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      const d = dist[nx + ny * COLS];
+      if (d >= 0 && d < best) { best = d; compassTarget = n; }
+    }
+  });
+  compassDist = best;
+}
+
+function adjacentNpc() {
+  if (player.moving) return null;
+  const f = DIRS[player.dir];
+  const facing = NPCS.find(n => n.x === player.x + f[0] && n.y === player.y + f[1]);
+  if (facing) return facing;
+  return NPCS.find(n => Math.abs(n.x - player.x) + Math.abs(n.y - player.y) === 1) || null;
+}
+function updatePrompt() {
+  const n = phase === "play" ? adjacentNpc() : null;
+  const btn = $("prompt");
+  if (!n) { btn.hidden = true; return; }
+  const touch = matchMedia("(pointer: coarse)").matches;
+  btn.textContent = (touch ? "Parler " : "Espace : parler ") + n.to;
+  btn.classList.toggle("bottom", n.id === "cafe");
+  btn.hidden = false;
+  hideEgg();
+}
+
+/* Easter eggs : affichés uniquement tant que le joueur est arrêté sur la case */
+function hideEgg() { $("egg").hidden = true; }
+function updateEgg() {
+  const txt = phase === "play" ? EGGS[player.x + "," + player.y] : null;
+  const el = $("egg");
+  if (txt) { el.textContent = txt; el.classList.add("bottom"); el.hidden = false; }
+  else el.hidden = true;
+}
+
+/* ============================================================
+   DIALOGUES
+   ============================================================ */
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function charteLink(txt) { return `<a class="btn" href="${CONFIG.CHARTE_URL}" target="_blank" rel="noopener">${txt}</a>`; }
+/* Le focus va sur la boîte de dialogue elle-même : aucune réponse ni aucun bouton
+   n'apparaît présélectionné. Entrée ou Espace déclenchent le bouton principal (Continuer, Réessayer). */
+function focusDialog() { $("dialog").focus({ preventScroll: true }); }
+function guard(fn) { return () => { if (performance.now() - openedAt > 250) fn(); }; }
+
+function interact() {
+  const n = adjacentNpc();
+  if (!n) return;
+  n.dir = { up: "down", down: "up", left: "right", right: "left" }[player.dir];
+  dirStack.length = 0;
+  openDialog(n);
+}
+
+function openDialog(n) {
+  currentNpc = n; phase = "dialog"; openedAt = performance.now();
+  $("prompt").hidden = true; hideEgg();
+  draw(performance.now());
+  const dlg = $("dialog");
+  dlg.hidden = false;
+  if (done.has(n.id)) {
+    dlg.innerHTML = `<p class="who">${n.name}</p><p class="line">Merci encore ! Pour rappel : ${n.expl}</p>
+      <div class="row"><button class="primary" id="d-close">Continuer</button></div>`;
+  } else if (n.boss && !bossUnlocked()) {
+    const left = NPCS.length - 1 - done.size;
+    dlg.innerHTML = `<p class="who">${n.name}</p><p class="line">Pas si vite. Reviens quand tu auras aidé les sept autres collègues. Il t'en reste ${left}. Suis la flèche : elle t'indique le plus proche.</p>
+      <div class="row"><button class="primary" id="d-close">Continuer</button></div>`;
+  } else { renderQuestion(); return; }
+  $("d-close").onclick = guard(closeDialog);
+  focusDialog();
+}
+
+function renderQuestion() {
+  const n = currentNpc;
+  currentOrder = n.order;
+  const intro = attempts[n.id] ? "" : `${n.intro} `;
+  $("dialog").innerHTML = `<p class="who">${n.name}</p><p class="line">${intro}${n.question}</p>
+    <div class="choices">${currentOrder.map((o, k) => `<button data-k="${k}"><span class="key">${k + 1}</span><span>${n.choices[o]}</span></button>`).join("")}</div>`;
+  $("dialog").querySelectorAll(".choices button").forEach(b => b.onclick = guard(() => choose(+b.dataset.k)));
+  focusDialog();
+}
+
+function choose(k) {
+  const n = currentNpc; if (!n || !currentOrder) return;
+  const picked = currentOrder[k]; currentOrder = null;
+  const dlg = $("dialog");
+  openedAt = performance.now();
+  if (picked === n.answer) {
+    const pts = POINTS[Math.min(attempts[n.id], POINTS.length - 1)];
+    score += pts; done.add(n.id); updateHud(); Sound.sfx("ok");
+    const last = done.size === NPCS.length;
+    if (last) { tPause(); timer.running = false; clearInterval(timer.iv); }
+    dlg.innerHTML = `<p class="who">${n.name}</p><p class="line"><span class="ok">Bonne réponse, +${pts} points.</span> ${n.expl}</p>
+      <div class="row"><button class="primary" id="d-close">${last ? "Voir mon score" : "Continuer"}</button></div>`;
+    $("d-close").onclick = guard(last ? endGame : closeDialog);
+    draw(performance.now());
+  } else {
+    attempts[n.id]++; Sound.sfx("ko");
+    const next = POINTS[Math.min(attempts[n.id], POINTS.length - 1)];
+    dlg.innerHTML = `<p class="who">${n.name}</p><p class="line"><span class="ko">Pas tout à fait.</span> ${n.hint} La prochaine bonne réponse vaut ${next} points.</p>
+      <div class="row"><button class="primary" id="d-retry">Réessayer</button>${charteLink("Ouvrir la charte")}</div>`;
+    $("d-retry").onclick = guard(renderQuestion);
+  }
+  focusDialog();
+}
+
+function closeDialog() {
+  $("dialog").hidden = true; $("dialog").innerHTML = "";
+  currentNpc = null; phase = "play";
+  $("stage").focus({ preventScroll: true });
+  computeCompass(); updatePrompt(); draw(performance.now());
+}
+
+/* ============================================================
+   ÉCRANS : intro, fin, vérification
+   ============================================================ */
+function makeCode(sc, secs) {
+  const s = `${sc}|${secs}|${CONFIG.SALT}`;
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36).toUpperCase().padStart(6, "0").slice(-6);
+}
+function showOverlay(html) { const o = $("overlay"); o.innerHTML = `<div class="card">${html}</div>`; o.hidden = false; }
+
+function showIntro() {
+  phase = "intro"; Sound.music("intro");
+  showOverlay(`
+    <h2>Enza AI Charter Quest</h2>
+    <p class="sub">Semaine du Numérique Responsable</p>
+    <p>Huit collègues ont une question sur notre Charte IA.<br>Va les voir, réponds juste, et vise le meilleur score.</p>
+    <p>Une bonne réponse du premier coup vaut 100 points. En cas d'erreur, tu reçois un indice et tu peux réessayer, pour moins de points.</p>
+    <p>Consulter la charte est autorisé, et même conseillé : le chrono se met en pause quand tu changes d'onglet.</p>
+    <p>La flèche près de ton personnage indique le collègue le plus proche. La Grande Argentière t'attend en dernier, dans le bureau DAF.</p>
+    <p class="controls">Flèches ou ZQSD pour te déplacer, Espace pour parler,<br>touches 1 à 3 pour répondre, M pour le son.</p>
+    <div class="row"><button class="primary" id="o-start">Commencer la partie</button>${charteLink("Ouvrir la charte")}</div>`);
+  $("o-start").onclick = startGame;
+  $("o-start").focus();
+}
+
+function startGame() {
+  resetState();
+  $("overlay").hidden = true;
+  phase = "play";
+  timer.running = true; tResume();
+  clearInterval(timer.iv); timer.iv = setInterval(updateHud, 1000);
+  Sound.music("game");
+  $("stage").focus({ preventScroll: true });
+  hideEgg(); computeCompass(); draw(performance.now()); updatePrompt();
+}
+
+function endGame() {
+  $("dialog").hidden = true;
+  tPause(); timer.running = false; clearInterval(timer.iv);
+  const secs = Math.floor(tElapsed() / 1000);
+  const code = makeCode(score, secs);
+  updateHud();
+  phase = "end"; compassTarget = null; hideEgg(); draw(performance.now());
+  Sound.victory();
+  const formsUrl = CONFIG.FORMS_URL
+    ? CONFIG.FORMS_URL
+      + "&" + CONFIG.FORMS_FIELDS.score + "=" + encodeURIComponent(score)
+      + "&" + CONFIG.FORMS_FIELDS.temps + "=" + encodeURIComponent(fmt(secs))
+      + "&" + CONFIG.FORMS_FIELDS.code + "=" + encodeURIComponent(code)
+    : "";
+  const formsBtn = formsUrl
+    ? `<a class="btn primary" href="${formsUrl}" target="_blank" rel="noopener">Enregistrer mon score</a>`
+    : `<button class="primary" disabled>Formulaire à configurer</button>`;
+  const perfect = score === NPCS.length * POINTS[0];
+  showOverlay(`
+    <h2>${perfect ? "Sans faute." : "Charte validée."}</h2>
+    <p class="sub">Les huit collègues sont convaincus.</p>
+    <div class="results">
+      <div><span>Score</span><strong>${score} / ${NPCS.length * POINTS[0]}</strong></div>
+      <div><span>Temps</span><strong>${fmt(secs)}</strong></div>
+      <div><span>Code</span><strong>${code}</strong></div>
+    </div>
+    <p>Pour entrer au classement, reporte ces trois valeurs dans le formulaire. Le top 5 est publié chaque matin dans Teams.</p>
+    <div class="row">${formsBtn}<button id="o-copy">Copier les valeurs</button>${charteLink("Relire la charte")}<button id="o-again">Rejouer</button></div>`);
+  $("o-copy").onclick = async () => {
+    const txt = `Score : ${score}\nTemps : ${fmt(secs)}\nCode : ${code}`;
+    try { await navigator.clipboard.writeText(txt); $("o-copy").textContent = "Valeurs copiées"; }
+    catch { $("o-copy").textContent = "Copie impossible, recopie-les"; }
+  };
+  $("o-again").onclick = startGame;
+  document.querySelector("#overlay .btn.primary, #overlay button:not(:disabled)").focus();
+}
+
+function showVerif() {
+  phase = "verif";
+  showOverlay(`
+    <h2>Vérifier un score</h2>
+    <p class="sub">Réservé à l'organisateur</p>
+    <label>Score<input id="v-score" inputmode="numeric"></label>
+    <label>Temps (mm:ss)<input id="v-time" placeholder="06:12"></label>
+    <label>Code<input id="v-code" autocapitalize="characters"></label>
+    <div class="row"><button class="primary" id="v-go">Vérifier</button></div>
+    <p id="v-res" aria-live="polite" style="margin-top:12px"></p>`);
+  $("v-go").onclick = () => {
+    const sc = parseInt($("v-score").value, 10);
+    const m = /^(\d+):(\d{2})$/.exec($("v-time").value.trim());
+    const res = $("v-res");
+    if (isNaN(sc) || !m) { res.innerHTML = `<span class="ko">Format attendu : score en chiffres, temps en mm:ss.</span>`; return; }
+    const ok = makeCode(sc, +m[1] * 60 + +m[2]) === $("v-code").value.trim().toUpperCase();
+    res.innerHTML = ok ? `<span class="ok">Code valide.</span>` : `<span class="ko">Code invalide pour ce score et ce temps.</span>`;
+  };
+  $("v-score").focus();
+}
+
+/* ============================================================
+   ENTRÉES
+   ============================================================ */
+const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if ((e.key === "m" || e.key === "M") && !e.repeat) { toggleSound(); return; }
+  if (phase === "play") {
+    const d = KEYMAP[e.code];
+    if (d) { e.preventDefault(); pressDir(d); return; }
+    if (e.code === "Space" || e.code === "Enter" || e.code === "NumpadEnter") {
+      if (e.target === $("prompt")) return;
+      e.preventDefault(); if (!e.repeat) interact();
+    }
+  } else if (phase === "dialog") {
+    if (e.code === "Escape") { closeDialog(); return; }
+    if ((e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space") && e.target === $("dialog")) {
+      e.preventDefault();
+      const main = $("dialog").querySelector("#d-close, #d-retry");
+      if (main && !e.repeat) main.click();
+      return;
+    }
+    const m = /^(?:Digit|Numpad)([1-3])$/.exec(e.code);
+    if (m && currentOrder && performance.now() - openedAt > 250) { e.preventDefault(); choose(+m[1] - 1); }
+  }
+});
+document.addEventListener("keyup", e => { const d = KEYMAP[e.code]; if (d) releaseDir(d); });
+window.addEventListener("blur", () => { dirStack.length = 0; });
+$("prompt").onclick = () => { if (phase === "play") interact(); };
+$("snd").onclick = () => { toggleSound(); if (phase === "play") $("stage").focus({ preventScroll: true }); };
+
+document.querySelectorAll(".pad [data-dir]").forEach(b => {
+  const d = b.dataset.dir;
+  b.addEventListener("pointerdown", e => { e.preventDefault(); if (phase === "play") pressDir(d); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, () => releaseDir(d)));
+});
+$("pad-talk").onclick = () => { if (phase === "play") interact(); };
+
+/* ============================================================
+   DÉMARRAGE
+   ============================================================ */
+resetState();
+draw(performance.now());
+if (location.hash === "#verif") showVerif(); else showIntro();
+</script>
+</body>
+</html>
